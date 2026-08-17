@@ -9,9 +9,21 @@ client: AsyncMongoClient | None = None
 async def connect_to_mongo() -> None:
     global client
     uri = settings.mongodb_uri
-    # Only use tlsInsecure for Atlas cloud connections (mongodb+srv:// scheme)
-    # Local replica sets use plain TCP with no TLS
     is_atlas = uri.startswith("mongodb+srv://") or "mongodb.net" in uri
+
+    extra: dict = {}
+    if is_atlas:
+        import ssl
+        import certifi
+        # Force TLS 1.2 — Atlas M0 free tier rejects TLS 1.3 handshakes
+        # from certain OpenSSL versions (Python 3.12 on Linux)
+        ssl_ctx = ssl.create_default_context(cafile=certifi.where())
+        ssl_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        ssl_ctx.maximum_version = ssl.TLSVersion.TLSv1_2
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
+        extra = {"tlsCAFile": certifi.where(), "tlsAllowInvalidCertificates": True}
+
     client = AsyncMongoClient(
         uri,
         server_api=ServerApi("1"),
@@ -20,7 +32,7 @@ async def connect_to_mongo() -> None:
         maxPoolSize=settings.mongo_max_pool_size,
         retryWrites=True,
         appName="whitfield-wms-api",
-        **({"tlsInsecure": True} if is_atlas else {}),
+        **extra,
     )
     await client.admin.command("ping")
 
