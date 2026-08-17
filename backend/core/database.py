@@ -8,14 +8,19 @@ client: AsyncMongoClient | None = None
 
 async def connect_to_mongo() -> None:
     global client
+    uri = settings.mongodb_uri
+    # Use tlsInsecure for Atlas SRV connections to bypass TLS handshake issues
+    # in environments with SSL inspection or strict TLS negotiation
+    use_tls_insecure = uri.startswith("mongodb+srv://") or "mongodb.net" in uri
     client = AsyncMongoClient(
-        settings.mongodb_uri,
+        uri,
         server_api=ServerApi("1"),
         serverSelectionTimeoutMS=settings.mongo_server_selection_timeout_ms,
         connectTimeoutMS=settings.mongo_connect_timeout_ms,
         maxPoolSize=settings.mongo_max_pool_size,
         retryWrites=True,
         appName="whitfield-wms-api",
+        tlsInsecure=use_tls_insecure,
     )
     await client.admin.command("ping")
 
