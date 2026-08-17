@@ -12,7 +12,7 @@ RUN corepack enable
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 
-ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
+ARG NEXT_PUBLIC_API_BASE_URL=/api/v1
 ARG NEXT_PUBLIC_WEBSOCKET_BASE_URL=ws://localhost:8000/api/v1
 ARG BACKEND_URL=https://whitfield-api.onrender.com
 
