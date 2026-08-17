@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
-const rawBackend = process.env.BACKEND_URL || "";
-const backendUrl = rawBackend.startsWith("http") ? rawBackend : "http://127.0.0.1:8000";
+const envBackend = process.env.BACKEND_URL ?? "";
+// Guard: if the env var contains a non-http value (e.g. Render passing key-as-value), use safe fallback
+const backendUrl = envBackend.startsWith("http")
+  ? envBackend
+  : process.env.NODE_ENV === "production"
+  ? "https://whitfield-api.onrender.com"
+  : "http://127.0.0.1:8000";
 
 
 const nextConfig: NextConfig = {
