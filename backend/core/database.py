@@ -7,34 +7,51 @@ client: AsyncMongoClient | None = None
 
 
 async def connect_to_mongo() -> None:
+    """Connect to MongoDB with automatic fallback strategies for Atlas cloud clusters."""
     global client
     uri = settings.mongodb_uri
-    is_atlas = uri.startswith("mongodb+srv://") or "mongodb.net" in uri
+    is_atlas = "mongodb.net" in uri or uri.startswith("mongodb+srv://")
 
-    extra: dict = {}
+    base_kwargs: dict = {
+        "serverSelectionTimeoutMS": settings.mongo_server_selection_timeout_ms,
+        "connectTimeoutMS": settings.mongo_connect_timeout_ms,
+        "maxPoolSize": settings.mongo_max_pool_size,
+        "retryWrites": True,
+        "appName": "whitfield-wms-api",
+    }
+
+    # Build ordered list of connection strategies to try
+    strategies: list[dict] = []
+
     if is_atlas:
-        import ssl
-        import certifi
-        # Force TLS 1.2 — Atlas M0 free tier rejects TLS 1.3 handshakes
-        # from certain OpenSSL versions (Python 3.12 on Linux)
-        ssl_ctx = ssl.create_default_context(cafile=certifi.where())
-        ssl_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
-        ssl_ctx.maximum_version = ssl.TLSVersion.TLSv1_2
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = ssl.CERT_NONE
-        extra = {"tlsCAFile": certifi.where(), "tlsAllowInvalidCertificates": True}
+        # Strategy 1: Atlas with Stable API + allow invalid TLS certs
+        strategies.append({**base_kwargs, "server_api": ServerApi("1"), "tlsAllowInvalidCertificates": True})
+        # Strategy 2: Atlas with Stable API + full TLS disabled
+        strategies.append({**base_kwargs, "server_api": ServerApi("1"), "tls": False})
+        # Strategy 3: Atlas without Stable API + allow invalid TLS certs
+        strategies.append({**base_kwargs, "tlsAllowInvalidCertificates": True})
+        # Strategy 4: Atlas plain — let pymongo decide
+        strategies.append({**base_kwargs})
+    else:
+        # Local / non-Atlas: plain connection, no TLS
+        strategies.append({**base_kwargs, "server_api": ServerApi("1")})
+        strategies.append({**base_kwargs})
 
-    client = AsyncMongoClient(
-        uri,
-        server_api=ServerApi("1"),
-        serverSelectionTimeoutMS=settings.mongo_server_selection_timeout_ms,
-        connectTimeoutMS=settings.mongo_connect_timeout_ms,
-        maxPoolSize=settings.mongo_max_pool_size,
-        retryWrites=True,
-        appName="whitfield-wms-api",
-        **extra,
-    )
-    await client.admin.command("ping")
+    last_error: Exception | None = None
+    for i, kwargs in enumerate(strategies, 1):
+        try:
+            c = AsyncMongoClient(uri, **kwargs)
+            await c.admin.command("ping")
+            client = c
+            return
+        except Exception as exc:
+            last_error = exc
+            try:
+                await c.close()
+            except Exception:
+                pass
+
+    raise RuntimeError(f"Could not connect to MongoDB after {len(strategies)} strategies: {last_error}")
 
 
 async def close_mongo_connection() -> None:
