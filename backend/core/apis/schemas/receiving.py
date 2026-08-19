@@ -27,6 +27,7 @@ class ReceiptResponse(CreatedResource):
 class ReceiptCommandResponse(CommandResponse):
     received_quantity: int
     stock_status: str
+    balance_quantity: int
 
 
 class ReceiptListResponse(APIModel):
