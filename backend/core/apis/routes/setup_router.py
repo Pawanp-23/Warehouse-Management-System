@@ -52,7 +52,7 @@ async def list_products(organization_id: str = Depends(get_organization_id), sel
     if seller_id:
         query["seller_id"] = seller_id
     products = await get_database().products.find(query).sort("name", 1).to_list(length=1000)
-    return [ProductResource(id=item["_id"], name=item["name"], seller_id=item["seller_id"], sku=item["sku"], barcode=item["barcodes"][0], created_at=item["created_at"]) for item in products]
+    return [ProductResource(id=item["_id"], name=item["name"], seller_id=item["seller_id"], sku=item["sku"], barcode=next(iter(item.get("barcodes") or []), None), created_at=item["created_at"]) for item in products]
 
 
 @router.post("/organizations", response_model=SetupResource, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles("platform_admin"))])

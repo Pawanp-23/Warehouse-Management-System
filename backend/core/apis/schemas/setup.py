@@ -54,4 +54,4 @@ class LocationResource(SetupResource):
 class ProductResource(SetupResource):
     seller_id: str
     sku: str
-    barcode: str
+    barcode: str | None = None
