@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   FormEvent,
@@ -7,6 +7,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -152,8 +153,8 @@ type SpeechRecognitionLike = {
   start: () => void;
   stop: () => void;
   onresult:
-    | ((event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void)
-    | null;
+  | ((event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void)
+  | null;
   onerror: (() => void) | null;
   onend: (() => void) | null;
 };
@@ -322,11 +323,11 @@ export default function WmsApp() {
             ? body.detail
             : Array.isArray(body?.detail)
               ? body.detail
-                  .map(
-                    (item: { loc?: string[]; msg?: string }) =>
-                      `${item.loc?.at(-1) ?? "field"}: ${item.msg ?? "is invalid"}`,
-                  )
-                  .join("; ")
+                .map(
+                  (item: { loc?: string[]; msg?: string }) =>
+                    `${item.loc?.at(-1) ?? "field"}: ${item.msg ?? "is invalid"}`,
+                )
+                .join("; ")
               : (body?.detail?.code ?? "Request failed");
         throw new Error(detail);
       }
@@ -406,14 +407,21 @@ export default function WmsApp() {
     setAuthReady(true);
   }, []);
 
+  // Keep a stable ref to refresh so effects don't re-fire when the
+  // useCallback identity changes after each state update.
+  const refreshRef = useRef(refresh);
   useEffect(() => {
-    if (session) void refresh();
-  }, [refresh, session]);
+    refreshRef.current = refresh;
+  }, [refresh]);
+
+  // Initial data load: runs once when a session is established.
+  // Using refreshRef avoids the infinite-loop caused by `refresh` being
+  // recreated on every state-setter call inside it.
   useEffect(() => {
-    if (!session) return;
-    const timer = window.setInterval(() => void refresh(), 10000);
-    return () => window.clearInterval(timer);
-  }, [refresh, session]);
+    if (session) void refreshRef.current();
+  }, [session]);
+
+  // WebSocket for real-time push updates.
   useEffect(() => {
     if (!session || !organizationId) return;
     const socketUrl = `${websocketBaseUrl.replace(/^http/, "ws")}/ws/${organizationId}`;
@@ -421,13 +429,14 @@ export default function WmsApp() {
       "whitfield-auth",
       session.access_token,
     ]);
-    socket.onmessage = () => {
-      void refresh();
+    socket.onmessage = (event) => {
+      void refreshRef.current();
+      console.log("WebSocket message:", event.data);
     };
     socket.onerror = () =>
       setApiState((state) => (state === "offline" ? "offline" : "online"));
     return () => socket.close();
-  }, [organizationId, refresh, session]);
+  }, [organizationId, session]);
 
   const totals = useMemo(
     () =>
@@ -923,10 +932,10 @@ function LandingPage({ onEnter }: { onEnter: () => void }) {
       );
       const pageProgress = Math.min(
         window.scrollY /
-          Math.max(
-            document.documentElement.scrollHeight - window.innerHeight,
-            1,
-          ),
+        Math.max(
+          document.documentElement.scrollHeight - window.innerHeight,
+          1,
+        ),
         1,
       );
       root.style.setProperty("--scene", sceneProgress.toFixed(3));
@@ -2089,18 +2098,18 @@ function SetupPage({
   }, [sellerId, warehouseId, sellers, warehouses]);
   const submit =
     (path: string, label: string, transform: (data: FormData) => object) =>
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const created = await onCreate(
-        path,
-        transform(new FormData(event.currentTarget)),
-        label,
-      );
-      if (!created) return;
-      if (path === "/setup/sellers") setSellerId(created.id);
-      if (path === "/setup/warehouses") setWarehouseId(created.id);
-      event.currentTarget.reset();
-    };
+      async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const created = await onCreate(
+          path,
+          transform(new FormData(event.currentTarget)),
+          label,
+        );
+        if (!created) return;
+        if (path === "/setup/sellers") setSellerId(created.id);
+        if (path === "/setup/warehouses") setWarehouseId(created.id);
+        event.currentTarget.reset();
+      };
   return (
     <>
       <PageTitle
@@ -2368,13 +2377,13 @@ function AuthScreen({
       mode === "login"
         ? { email: data.get("email"), password: data.get("password") }
         : {
-            name: data.get("name"),
-            email: data.get("email"),
-            password: data.get("password"),
-            organization_id: data.get("organization_id"),
-            role,
-            invite_code: data.get("invite_code") || null,
-          };
+          name: data.get("name"),
+          email: data.get("email"),
+          password: data.get("password"),
+          organization_id: data.get("organization_id"),
+          role,
+          invite_code: data.get("invite_code") || null,
+        };
     try {
       const response = await fetch(
         `${apiBaseUrl}/auth/${mode === "login" ? "login" : "register"}`,

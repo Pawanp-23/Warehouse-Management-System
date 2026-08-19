@@ -30,9 +30,9 @@ class Settings(BaseSettings):
     mongo_connect_timeout_ms: int = Field(default=5_000, ge=500, le=60_000)
     mongo_max_pool_size: int = Field(default=50, ge=5, le=500)
     openai_api_key: str | None = None
-    openai_chat_model: str = "gpt-5.6-luna"
+    openai_chat_model: str = "gpt-4o-mini"
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-3.5-flash"
+    gemini_model: str = "gemini-3.6-flash"
     ai_provider: str = Field(default="auto", pattern="^(auto|gemini|openai|local)$")
     stripe_secret_key: str | None = None
     stripe_publishable_key: str | None = None

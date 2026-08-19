@@ -1,9 +1,12 @@
+import logging
 import re
 
 import httpx
 
 from core.config import settings
 from core.controllers import knowledge_controller
+
+logger = logging.getLogger("whitfield.assistant")
 
 
 def _sources(chunks: list[dict]) -> list[dict]:
@@ -125,12 +128,14 @@ async def chat(organization_id: str, message: str, history: list) -> dict:
         try:
             answer = await _gemini_answer(message, history, chunks)
             return {"answer": answer, "sources": _sources(chunks), "mode": "gemini"}
-        except (httpx.HTTPError, RuntimeError):
+        except (httpx.HTTPError, RuntimeError) as exc:
+            logger.warning("Gemini failed, falling back: %s", exc)
             mode = "extractive-fallback"
     if use_openai:
         try:
             answer = await _openai_answer(message, history, chunks)
             mode = "openai"
-        except (httpx.HTTPError, RuntimeError):
+        except (httpx.HTTPError, RuntimeError) as exc:
+            logger.warning("OpenAI failed, falling back: %s", exc)
             mode = "extractive-fallback"
     return {"answer": answer, "sources": _sources(chunks), "mode": mode}
