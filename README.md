@@ -1,5 +1,13 @@
 # Whitfield WMS
 
+<p>
+  <a href="https://whitfield-frontend.onrender.com"><img alt="Live demo" src="https://img.shields.io/badge/Live_demo-e5192c?style=flat-square&logo=render&logoColor=white"></a>
+  <a href="https://whitfield-api.onrender.com/docs"><img alt="API docs" src="https://img.shields.io/badge/API_docs-111111?style=flat-square&logo=swagger&logoColor=white"></a>
+  <a href="https://portfolio-pawanpatil.vercel.app"><img alt="Portfolio" src="https://img.shields.io/badge/Portfolio-Pawan_Patil-111111?style=flat-square"></a>
+</p>
+
+**Live:** [whitfield-frontend.onrender.com](https://whitfield-frontend.onrender.com) · **API:** [whitfield-api.onrender.com/docs](https://whitfield-api.onrender.com/docs) — Render free tier, first load can take ~30 s · **Built by** [Pawan Patil](https://portfolio-pawanpatil.vercel.app)
+
 [![Backend CI](https://github.com/Pawanp-23/Warehouse-Management-System/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/Pawanp-23/Warehouse-Management-System/actions/workflows/backend-ci.yml)
 [![Frontend CI](https://github.com/Pawanp-23/Warehouse-Management-System/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/Pawanp-23/Warehouse-Management-System/actions/workflows/frontend-ci.yml)
 
